@@ -548,3 +548,29 @@ export async function getJournalDates(
     return [];
   }
 }
+
+/** 获取某月所有日记（YYYY-MM 格式） */
+export async function getJournalEntriesByMonth(
+  userId: string,
+  yearMonth: string, // "2026-06"
+): Promise<JournalEntry[]> {
+  if (!userId || !yearMonth) throw new Error("[kv] userId and yearMonth are required");
+
+  try {
+    const all: JournalEntry[] = [];
+    /* 遍历当月每一天，收集日记 */
+    const [y, m] = yearMonth.split("-").map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${yearMonth}-${String(d).padStart(2, "0")}`;
+      const entries = await getJournalEntries(userId, date);
+      all.push(...entries);
+    }
+
+    return all.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  } catch (err) {
+    console.error(`[kv] getJournalEntriesByMonth failed:`, err);
+    return [];
+  }
+}

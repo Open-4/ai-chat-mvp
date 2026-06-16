@@ -1,0 +1,12 @@
+{
+  "welcome": "Bienvenue",
+  "home": "Accueil",
+  "about": "À propos",
+  "contact": "Contact",
+  "settings": "Paramètres",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "delete": "Supprimer",
+  "loading": "Chargement...",
+  "error": "Une erreur est survenue"
+}

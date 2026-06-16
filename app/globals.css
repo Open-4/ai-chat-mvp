@@ -1,26 +1,315 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================
+   治愈系设计规范 — Healing Design System
+   ============================================
+   主色  柔雾薄荷绿 #65c3a9  情绪平静 / 安全 / 成长
+   辅色  柔粉 #f5b7b1        温柔 / 关怀
+        柔蓝 #aed6f1         宁静 / 信任
+   中性  低饱和暖灰           禁用纯黑 #000 / 纯白 #fff
+   圆角  卡片/按钮 16px      气泡/输入框 24px
+   阴影  全系列软弥散          无硬边硬角
+   动效  400ms ease-out       过渡柔和
+   文本  容器不写死宽度       适配小语种长文本
+   ============================================ */
+
+/* ==========================================
+   1. 柔雾薄荷绿 主色阶 (Primary)
+   ========================================== */
+@theme {
+  --color-mint-50: #f2faf7;
+  --color-mint-100: #dff4ec;
+  --color-mint-200: #c4eadb;
+  --color-mint-300: #a3ddc8;
+  --color-mint-400: #83d1b7;
+  --color-mint-500: #65c3a9;
+  --color-mint-600: #4fa890;
+  --color-mint-700: #3c8a75;
+  --color-mint-800: #2a6b59;
+  --color-mint-900: #1a4d3f;
+  --color-mint-950: #0f3329;
+
+  /* ==========================================
+     2. 柔粉 辅色阶 (Accent · 情绪标签)
+     ========================================== */
+  --color-blush-50: #fdf4f2;
+  --color-blush-100: #fce8e5;
+  --color-blush-200: #f9d5cf;
+  --color-blush-300: #f7c0b8;
+  --color-blush-400: #f6aba2;
+  --color-blush-500: #f5b7b1;
+  --color-blush-600: #d99b95;
+  --color-blush-700: #b87e78;
+  --color-blush-800: #93605b;
+  --color-blush-900: #6b4340;
+
+  /* ==========================================
+     3. 柔蓝 辅色阶 (Accent · 情绪标签)
+     ========================================== */
+  --color-breeze-50: #f2f8fd;
+  --color-breeze-100: #e3f1fa;
+  --color-breeze-200: #d1e8f7;
+  --color-breeze-300: #bfddf3;
+  --color-breeze-400: #b6d9f2;
+  --color-breeze-500: #aed6f1;
+  --color-breeze-600: #8fb5cf;
+  --color-breeze-700: #7192a8;
+  --color-breeze-800: #546f82;
+  --color-breeze-900: #384d5c;
+
+  /* ==========================================
+     4. 低饱和暖灰 中性色阶 (Neutral)
+     ========================================== */
+  --color-warm-50: #faf8f6;
+  --color-warm-100: #f5f1ed;
+  --color-warm-200: #ebe4dd;
+  --color-warm-300: #d9d0c7;
+  --color-warm-400: #bfb4a8;
+  --color-warm-500: #a3998e;
+  --color-warm-600: #867d74;
+  --color-warm-700: #69625b;
+  --color-warm-800: #4d4843;
+  --color-warm-900: #302d2a;
+  --color-warm-950: #1c1a18;
+
+  /* ==========================================
+     5. 圆角系统
+     ========================================== */
+  --radius-card: 1rem;       /* 16px — 卡片 / 按钮 */
+  --radius-bubble: 1.5rem;   /* 24px — 气泡 / 输入框 */
+
+  /* ==========================================
+     6. 软弥散阴影（无硬边，多层叠加）
+     ========================================== */
+  --shadow-soft-xs:
+    0 1px 2px hsl(35 5% 0% / 0.03);
+  --shadow-soft-sm:
+    0 1px 3px hsl(35 5% 0% / 0.04),
+    0 1px 2px hsl(35 5% 0% / 0.03);
+  --shadow-soft-md:
+    0 4px 16px hsl(35 5% 0% / 0.03),
+    0 2px 6px hsl(35 5% 0% / 0.03);
+  --shadow-soft-lg:
+    0 10px 32px hsl(35 5% 0% / 0.04),
+    0 4px 12px hsl(35 5% 0% / 0.03);
+  --shadow-soft-xl:
+    0 20px 50px hsl(35 5% 0% / 0.05),
+    0 8px 20px hsl(35 5% 0% / 0.03);
+
+  /* ==========================================
+     7. 动效曲线
+     ========================================== */
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ============================================
+   语义色 — 浅色模式
+   ============================================ */
+:root {
+  --background: var(--color-warm-50);
+  --foreground: var(--color-warm-900);
+  --surface: #ffffff;              /* 卡片底色（浅色模式下微调更干净） */
+  --muted: var(--color-warm-100);
+  --border: var(--color-warm-200);
+  --shadow-color: 35 5% 0%;
+}
+
+/* ============================================
+   语义色 — 系统深色模式
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--color-warm-950);
+    --foreground: var(--color-warm-100);
+    --surface: var(--color-warm-900);
+    --muted: var(--color-warm-800);
+    --border: var(--color-warm-700);
+    --shadow-color: 0 0% 0%;
+  }
+}
+
+/* ============================================
+   语义色 — 手动深色模式 (.dark)
+   ============================================ */
+.dark {
+  --background: var(--color-warm-950);
+  --foreground: var(--color-warm-100);
+  --surface: var(--color-warm-900);
+  --muted: var(--color-warm-800);
+  --border: var(--color-warm-700);
+  --shadow-color: 0 0% 0%;
+}
+
+/* ============================================
+   语义 Token 注册到 Tailwind
+   ============================================ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ============================================
+   全局基础样式
+   ============================================ */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 400ms ease-out, color 400ms ease-out;
+}
+
+/*
+  全局动效 — 限定可动画属性，避免 layout thrashing
+  涵盖：颜色 / 背景 / 边框 / 透明度 / 变换 / 阴影 / 滤镜
+*/
+*,
+*::before,
+*::after {
+  transition-duration: 400ms;
+  transition-timing-function: ease-out;
+  transition-property:
+    color,
+    background-color,
+    border-color,
+    outline-color,
+    opacity,
+    transform,
+    box-shadow,
+    filter,
+    backdrop-filter;
+}
+
+/* 聚焦环 — 柔化，无硬边 */
+*:focus-visible {
+  outline: 2px solid var(--color-mint-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 容器不写死宽度 */
+.container-responsive {
+  width: 100%;
+  max-width: none;
+}
+
+/* 适配小语种长文本 — 避免溢出截断 */
+h1, h2, h3, h4, h5, h6, p, span, a, li, label {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* ============================================
+   组件预设层
+   ============================================ */
+@layer components {
+  /* ---- 卡片 ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft-md);
+    padding: 1.5rem;
+  }
+
+  /* ---- 气泡 ---- */
+  .bubble {
+    border-radius: var(--radius-bubble);
+    box-shadow: var(--shadow-soft-sm);
+    padding: 0.75rem 1rem;
+  }
+
+  /* ---- 输入框 ---- */
+  .input {
+    border-radius: var(--radius-bubble);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--foreground);
+    padding: 0.625rem 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .input::placeholder {
+    color: var(--color-warm-400);
+  }
+
+  .input:focus {
+    border-color: var(--color-mint-400);
+    box-shadow: var(--shadow-soft-sm);
+    outline: none;
+  }
+
+  /* ---- 按钮底座 ---- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-card);
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .btn-primary {
+    background: var(--color-mint-500);
+    color: #ffffff;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-mint-600);
+    box-shadow: var(--shadow-soft-md);
+  }
+
+  .btn-primary:active {
+    background: var(--color-mint-700);
+    transform: scale(0.98);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover {
+    background: var(--muted);
+    border-color: var(--color-warm-300);
+  }
+
+  /* ---- 情绪标签 ---- */
+  .tag-positive {
+    background: var(--color-mint-100);
+    color: var(--color-mint-700);
+    border-radius: var(--radius-bubble);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .tag-gentle {
+    background: var(--color-blush-100);
+    color: var(--color-blush-700);
+    border-radius: var(--radius-bubble);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .tag-calm {
+    background: var(--color-breeze-100);
+    color: var(--color-breeze-700);
+    border-radius: var(--radius-bubble);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
 }

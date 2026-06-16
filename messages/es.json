@@ -1,0 +1,12 @@
+{
+  "welcome": "Bienvenido",
+  "home": "Inicio",
+  "about": "Acerca de",
+  "contact": "Contacto",
+  "settings": "Configuración",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "delete": "Eliminar",
+  "loading": "Cargando...",
+  "error": "Ocurrió un error"
+}

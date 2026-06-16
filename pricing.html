@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Companion — Pricing</title>
+  <style>
+    :root {
+      --bg: #faf8f6;
+      --surface: #fff;
+      --fg: #302d2a;
+      --muted: #f5f1ed;
+      --border: #ebe4dd;
+      --warm-400: #bfb4a8;
+      --warm-500: #a3998e;
+      --mint-50: #f2faf7;
+      --mint-400: #83d1b7;
+      --mint-500: #65c3a9;
+      --mint-600: #4fa890;
+      --mint-700: #3c8a75;
+      --mint-950: #0f3329;
+      --blush-400: #f6aba2;
+      --blush-600: #d99b95;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.03);
+      --shadow-lg: 0 10px 32px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+      --radius-card: 16px;
+      --radius-bubble: 24px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1a18;
+        --surface: #302d2a;
+        --fg: #f5f1ed;
+        --muted: #4d4843;
+        --border: #69625b;
+        --mint-50: #0f3329;
+        --mint-950: #0f3329;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.4s ease-out, color 0.4s ease-out, border-color 0.4s ease-out, box-shadow 0.4s ease-out; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; padding: 32px 0 8px; }
+    .header a { color: var(--warm-400); text-decoration: none; font-size: 20px; }
+    .header a:hover { color: var(--fg); }
+
+    /* Title */
+    .title-section { text-align: center; padding: 24px 0 48px; }
+    .title-section h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+    .title-section p { color: var(--warm-500); font-size: 15px; }
+
+    /* Toggle */
+    .toggle-wrap { display: flex; justify-content: center; padding-bottom: 32px; }
+    .toggle {
+      display: inline-flex; background: var(--muted); border-radius: var(--radius-card);
+      padding: 4px; gap: 4px;
+    }
+    .toggle button {
+      padding: 10px 24px; border-radius: var(--radius-card); border: none;
+      font-size: 14px; font-weight: 500; cursor: pointer; background: transparent;
+      color: var(--warm-500); transition: all 0.3s;
+    }
+    .toggle button.active { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-sm); }
+    .toggle button .badge {
+      display: inline-block; font-size: 10px; background: var(--mint-50); color: var(--mint-600);
+      padding: 2px 8px; border-radius: 999px; margin-left: 6px; font-weight: 500;
+    }
+
+    /* Cards */
+    .cards { display: grid; grid-template-columns: 1fr; gap: 20px; padding-bottom: 80px; }
+    @media (min-width: 640px) { .cards { grid-template-columns: 1fr 1fr; } }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-card); padding: 28px; box-shadow: var(--shadow-sm);
+      transition: all 0.4s;
+    }
+    .card.pro {
+      position: relative; border: 2px solid var(--mint-400); box-shadow: var(--shadow-lg);
+    }
+    @media (min-width: 640px) { .card.pro { transform: scale(1.02); } }
+
+    .badge-recommended {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--mint-500); color: #fff; font-size: 12px; font-weight: 500;
+      padding: 4px 18px; border-radius: var(--radius-bubble); box-shadow: var(--shadow-sm);
+    }
+
+    .card h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .card .price { display: flex; align-items: baseline; gap: 2px; margin-bottom: 24px; }
+    .card .price .amount { font-size: 32px; font-weight: 700; }
+    .card .price .period { font-size: 14px; color: var(--warm-400); }
+
+    .card ul { list-style: none; margin-bottom: 28px; }
+    .card li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 14px; color: var(--warm-500); }
+    .card li svg { width: 16px; height: 16px; color: var(--mint-500); flex-shrink: 0; margin-top: 2px; }
+    .card.pro li.pro-only { color: var(--fg); font-weight: 500; }
+
+    .btn-free {
+      display: block; text-align: center; padding: 12px; border-radius: var(--radius-card);
+      font-size: 14px; font-weight: 500; text-decoration: none;
+      border: 2px solid var(--mint-400); color: var(--mint-700);
+      transition: all 0.3s;
+    }
+    .btn-free:hover { background: var(--mint-50); }
+
+    #paypal-button-container { min-height: 44px; }
+
+    .status-msg {
+      width: 100%; padding: 12px; border-radius: var(--radius-card);
+      font-size: 14px; font-weight: 500; text-align: center;
+    }
+    .status-loading { background: var(--muted); color: var(--warm-500); animation: pulse 2s infinite; }
+    .status-processing { background: var(--muted); color: var(--warm-500); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .status-success { background: var(--mint-50); color: var(--mint-700); }
+    .status-error { color: var(--blush-600); font-size: 13px; text-align: center; margin-top: 12px; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--mint-500); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header class="header">
+    <a href="/">← Back</a>
+  </header>
+
+  <section class="title-section">
+    <h1>Simple, gentle pricing</h1>
+    <p>Start free. Upgrade when you're ready.</p>
+  </section>
+
+  <div class="toggle-wrap">
+    <div class="toggle" id="toggle">
+      <button data-billing="monthly" class="active">Monthly</button>
+      <button data-billing="yearly">Yearly <span class="badge">Save 20%</span></button>
+    </div>
+  </div>
+
+  <div class="cards">
+    <!-- Free -->
+    <div class="card">
+      <h2>Free</h2>
+      <div class="price">
+        <span class="amount">$0</span><span class="period">/mo</span>
+      </div>
+      <ul>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>AI companion chat</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Emotion journal</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Breathing exercises</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Mood history</li>
+      </ul>
+      <a href="/" class="btn-free">Get Started Free</a>
+    </div>
+
+    <!-- Pro -->
+    <div class="card pro" id="pro-card">
+      <span class="badge-recommended">Recommended</span>
+      <h2>Pro</h2>
+      <div class="price">
+        <span class="amount" id="pro-price">$9.90</span><span class="period">/mo</span>
+      </div>
+      <ul>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>AI companion chat</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Emotion journal</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Breathing exercises</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Mood history</li>
+        <li class="pro-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Unlimited daily messages</li>
+        <li class="pro-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Priority AI response</li>
+        <li class="pro-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Early access to new tools</li>
+        <li class="pro-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Custom emotion insights</li>
+      </ul>
+
+      <div id="paypal-area">
+        <div id="paypal-button-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <p id="error-msg" class="status-error"></p>
+</div>
+
+<script src="https://www.paypal.com/sdk/js?client-id=AUfHpp0i5QvFd13SrWDT2ugP9EWbn3Zu3z_z-zM1Tl_deDYpqCiz2rhj6CU3IU7E8Iwy-KwCjZe27mlf&currency=USD&intent=capture"></script>
+
+<script>
+  const DEMO_USER = "demo-user-001";
+  let billing = "monthly";
+
+  /* ── annual limit warning ── */
+  let annualBanner = null;
+
+  function showAnnualWarning(total, detail) {
+    if (annualBanner) annualBanner.remove();
+
+    const remaining = 50000 - total;
+    const pct = ((total / 50000) * 100).toFixed(1);
+
+    annualBanner = document.createElement("div");
+    annualBanner.style.cssText = `
+      margin: 16px auto 0; max-width: 720px; padding: 12px 20px;
+      border-radius: 16px; font-size: 13px; text-align: center;
+      background: ${total >= 50000 ? "#fce8e5" : "#fdf4f2"};
+      color: ${total >= 50000 ? "#b87e78" : "#93605b"};
+      border: 1px solid ${total >= 50000 ? "#f9d5cf" : "#fce8e5"};
+    `;
+    annualBanner.textContent = detail
+      ? detail
+      : `⚠ Annual: $${total.toLocaleString()} / $50,000 (${pct}%) — ${remaining > 0 ? `$${remaining.toLocaleString()} remaining` : "LIMIT REACHED"}`;
+    document.querySelector(".container").appendChild(annualBanner);
+  }
+
+  /* ── toggle ── */
+  document.getElementById("toggle").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    billing = btn.dataset.billing;
+    document.querySelectorAll("#toggle button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("pro-price").textContent = billing === "yearly" ? "$95.90" : "$9.90";
+  });
+
+  /* ── PayPal button ── */
+  function showStatus(html) {
+    const area = document.getElementById("paypal-area");
+    document.getElementById("paypal-button-container").style.display = "none";
+    const el = document.createElement("div");
+    el.className = "status-msg";
+    el.innerHTML = html;
+    area.appendChild(el);
+    return el;
+  }
+
+  paypal
+    .Buttons({
+      style: { shape: "pill", color: "white", layout: "vertical", label: "subscribe", tagline: false },
+
+      createOrder: async () => {
+        document.getElementById("error-msg").textContent = "";
+
+        const res = await fetch("/api/paypal/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: DEMO_USER, billing }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.orderId) {
+          /* 额度超限特殊提示 */
+          if (res.status === 403) {
+            showAnnualWarning(data.annualTotal, data.detail);
+          }
+          throw new Error(data.error ?? "Failed to create order");
+        }
+
+        /* 额度接近上限时提示 */
+        if (data.approachingLimit) {
+          showAnnualWarning(data.annualTotal);
+        }
+
+        console.log("[paypal] Order created:", data.orderId);
+        return data.orderId;
+      },
+
+      onApprove: async (data) => {
+        const statusEl = showStatus('<span class="spinner"></span> Completing payment…');
+        statusEl.classList.add("status-processing");
+        document.getElementById("error-msg").textContent = "";
+
+        try {
+          const res = await fetch("/api/paypal/capture-order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId: data.orderID, userId: DEMO_USER }),
+          });
+
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error ?? "Capture failed");
+
+          statusEl.remove();
+          const successEl = showStatus("Payment successful! You're now Pro 💚");
+          successEl.classList.add("status-success");
+
+          console.log("[paypal] Payment captured — user upgraded to Pro");
+        } catch (err) {
+          statusEl.remove();
+          document.getElementById("error-msg").textContent = err.message;
+        }
+      },
+
+      onError: (err) => {
+        console.error("[paypal] Error:", err);
+        document.getElementById("error-msg").textContent = err.message ?? "Payment failed";
+      },
+
+      onCancel: () => {
+        console.log("[paypal] Cancelled by user");
+      },
+    })
+    .render("#paypal-button-container");
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Cloudflare Workers / Pages 配置
+# 用于 @opennextjs/cloudflare 部署
+
+name = "ai-chat-mvp"
+compatibility_date = "2026-06-16"
+
+# ── KV 命名空间绑定 ──
+# 运行前需先创建 KV namespace:
+#   npx wrangler kv:namespace create "CHAT_KV"
+#   npx wrangler kv:namespace create "CHAT_KV" --preview
+# 然后将输出的 id 填入下方
+
+# [[kv_namespaces]]
+# binding = "CHAT_KV"
+# id = "your-kv-namespace-id-here"
+# preview_id = "your-preview-kv-namespace-id-here"
+
+# ── 环境变量（开发用 .dev.vars） ──
+# ANTHROPIC_API_KEY=sk-xxx

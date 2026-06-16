@@ -5,6 +5,13 @@ import { useParams } from "next/navigation";
 import ChatSidebar, { type ConversationItem } from "./_components/ChatSidebar";
 import ChatBubble, { type Emotion } from "./_components/ChatBubble";
 import ChatInput from "./_components/ChatInput";
+import {
+  initializeUser,
+  getUserConversations,
+  getConversation,
+  saveConversation,
+  type ConversationData,
+} from "@/lib/kv";
 
 /* ── helpers ── */
 function cn(...classes: (string | undefined | false | null)[]): string {
@@ -19,52 +26,46 @@ const t: Record<string, Record<string, string>> = {
     title: "AI Companion",
     subtitle: "Your gentle healing partner",
     newChat: "New Chat",
-    search: "Search conversations…",
-    today: "Today",
-    yesterday: "Yesterday",
-    noConversations: "No conversations yet",
     inputPlaceholder: "Share how you feel…",
-    emotionPositive: "Warm",
-    emotionGentle: "Tender",
-    emotionCalm: "Calm",
     menuOpen: "Open sidebar",
     emptyTitle: "Start a conversation",
     emptyDesc: "I'm here to listen. How are you feeling today?",
-    apiKeyMissing: "API key not configured. Add ANTHROPIC_API_KEY to .env.local",
+    loading: "Loading conversations…",
+    apiKeyMissing: "API key missing. Set ANTHROPIC_API_KEY in .env.local",
+    limitReached: "Daily message limit reached. Come back tomorrow 💛",
+    today: "Today",
+    yesterday: "Yesterday",
+    noConversations: "No conversations yet",
   },
   es: {
     title: "Compañero IA",
     subtitle: "Tu suave compañero de sanación",
     newChat: "Nueva charla",
-    search: "Buscar conversaciones…",
-    today: "Hoy",
-    yesterday: "Ayer",
-    noConversations: "Aún no hay conversaciones",
     inputPlaceholder: "Comparte cómo te sientes…",
-    emotionPositive: "Cálido",
-    emotionGentle: "Tierno",
-    emotionCalm: "Calma",
     menuOpen: "Abrir menú",
     emptyTitle: "Inicia una conversación",
     emptyDesc: "Estoy aquí para escuchar. ¿Cómo te sientes hoy?",
-    apiKeyMissing: "API key no configurada. Agrega ANTHROPIC_API_KEY a .env.local",
+    loading: "Cargando conversaciones…",
+    apiKeyMissing: "Falta API key. Configura ANTHROPIC_API_KEY en .env.local",
+    limitReached: "Límite diario alcanzado. Vuelve mañana 💛",
+    today: "Hoy",
+    yesterday: "Ayer",
+    noConversations: "Aún no hay conversaciones",
   },
   fr: {
     title: "Compagnon IA",
     subtitle: "Ton doux partenaire de guérison",
     newChat: "Nouvelle discussion",
-    search: "Rechercher des conversations…",
-    today: "Aujourd'hui",
-    yesterday: "Hier",
-    noConversations: "Pas encore de conversations",
     inputPlaceholder: "Partage ce que tu ressens…",
-    emotionPositive: "Chaleureux",
-    emotionGentle: "Tendre",
-    emotionCalm: "Calme",
     menuOpen: "Ouvrir le menu",
     emptyTitle: "Commencer une conversation",
     emptyDesc: "Je suis là pour t'écouter. Comment te sens-tu aujourd'hui ?",
-    apiKeyMissing: "Clé API non configurée. Ajoutez ANTHROPIC_API_KEY à .env.local",
+    loading: "Chargement des conversations…",
+    apiKeyMissing: "Clé API manquante. Configurez ANTHROPIC_API_KEY dans .env.local",
+    limitReached: "Limite quotidienne atteinte. Reviens demain 💛",
+    today: "Aujourd'hui",
+    yesterday: "Hier",
+    noConversations: "Pas encore de conversations",
   },
 };
 
@@ -86,16 +87,22 @@ type SSEEvent =
   | { type: "error"; code: string; message: string };
 
 /* ═══════════════════════════════════════════
-   SSE streaming API client
+   Demo user（后续替换为真实鉴权）
+   ═══════════════════════════════════════════ */
+const DEMO_USER = "demo-user-001";
+
+/* ═══════════════════════════════════════════
+   SSE streaming client
    ═══════════════════════════════════════════ */
 async function* streamChat(
   messages: { role: string; content: string }[],
   locale: string,
+  userId: string,
 ): AsyncGenerator<SSEEvent> {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, locale }),
+    body: JSON.stringify({ messages, locale, userId }),
   });
 
   if (!res.ok) {
@@ -103,9 +110,7 @@ async function* streamChat(
     throw new Error(err.error ?? `HTTP ${res.status}`);
   }
 
-  if (!res.body) {
-    throw new Error("Response body is empty");
-  }
+  if (!res.body) throw new Error("Response body is empty");
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -115,23 +120,15 @@ async function* streamChat(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
-
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed.startsWith("data: ")) continue;
-
         const raw = trimmed.slice(6);
         if (raw === "[DONE]") return;
-
-        try {
-          yield JSON.parse(raw) as SSEEvent;
-        } catch {
-          /* skip unparseable chunks */
-        }
+        try { yield JSON.parse(raw) as SSEEvent; } catch { /* skip */ }
       }
     }
   } finally {
@@ -140,16 +137,27 @@ async function* streamChat(
 }
 
 /* ═══════════════════════════════════════════
-   Helper: build shared messages array
+   Helpers
    ═══════════════════════════════════════════ */
-function buildMessagesPayload(
-  msgs: Message[],
-  newUserContent: string,
-): { role: string; content: string }[] {
+function now(): string {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function buildMessagesPayload(msgs: Message[], newContent: string) {
   return [
     ...msgs.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: newUserContent },
+    { role: "user" as const, content: newContent },
   ];
+}
+
+function convDataToMessages(data: ConversationData): Message[] {
+  return data.messages.map((m, i) => ({
+    id: `m-${i}-${m.timestamp}`,
+    role: m.role,
+    content: m.content,
+    emotion: m.emotion as Emotion | undefined,
+    timestamp: m.timestamp,
+  }));
 }
 
 /* ═══════════════════════════════════════════
@@ -159,114 +167,173 @@ export default function ChatPage() {
   const { locale } = useParams<{ locale: string }>();
   const dict = t[locale] ?? t.en;
 
-  /* ── state ── */
+  /* ── UI state ── */
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
 
-  /* keep a simple conversations list in-memory */
+  /* ── KV-backed state ── */
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingConv, setIsLoadingConv] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  /* ── scroll to bottom ── */
+  /* ── Init: load conversation list from KV ── */
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      try {
+        await initializeUser(DEMO_USER);
+        if (cancelled) return;
+
+        const list = await getUserConversations(DEMO_USER);
+        if (cancelled) return;
+
+        setConversations(list);
+
+        /* Auto-select most recent conversation */
+        if (list.length > 0) {
+          setActiveId(list[0].id);
+          const data = await getConversation(DEMO_USER, list[0].id);
+          if (data && !cancelled) {
+            setMessages(convDataToMessages(data));
+          }
+        }
+      } catch (err) {
+        console.error("[chat] Init error:", err);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    init();
+    return () => { cancelled = true; };
+  }, []);
+
+  /* ── Scroll to bottom ── */
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  /* ── create new conversation ── */
-  const handleNew = useCallback(() => {
-    abortRef.current?.abort(); // cancel any in-flight request
+  /* ── Reload sidebar ── */
+  const reloadConversations = useCallback(async () => {
+    try {
+      const list = await getUserConversations(DEMO_USER);
+      setConversations(list);
+    } catch (err) {
+      console.error("[chat] Failed to reload conversations:", err);
+    }
+  }, []);
 
-    const id = `conv-${Date.now()}`;
-    const newConv: ConversationItem = {
-      id,
-      title: dict.newChat,
-      lastMessage: "",
-      date: dict.today,
-    };
-    setConversations((prev) => [newConv, ...prev]);
+  /* ── Select conversation ── */
+  const handleSelect = useCallback(async (id: string) => {
     setActiveId(id);
-    setMessages([]);
     setStreamError(null);
-    setSidebarOpen(false);
-  }, [dict]);
+    setIsLoadingConv(true);
 
-  /* ── select conversation ── */
-  const handleSelect = useCallback((id: string) => {
-    setActiveId(id);
-    setMessages([]); // MVP: messages not persisted across sessions yet
-    setStreamError(null);
+    try {
+      const data = await getConversation(DEMO_USER, id);
+      if (data) {
+        setMessages(convDataToMessages(data));
+      } else {
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error("[chat] Failed to load conversation:", err);
+      setMessages([]);
+    } finally {
+      setIsLoadingConv(false);
+    }
+
     setSidebarOpen(false);
   }, []);
 
-  /* ── send message ── */
+  /* ── New conversation ── */
+  const handleNew = useCallback(async () => {
+    setStreamError(null);
+    const id = `conv-${Date.now()}`;
+
+    /* Save empty conversation to KV */
+    const newConv: ConversationData = {
+      id,
+      userId: DEMO_USER,
+      title: dict.newChat,
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveConversation(DEMO_USER, newConv);
+      await reloadConversations();
+    } catch (err) {
+      console.error("[chat] Failed to create conversation:", err);
+    }
+
+    setActiveId(id);
+    setMessages([]);
+    setSidebarOpen(false);
+  }, [dict, reloadConversations]);
+
+  /* ── Send message ── */
   const handleSend = useCallback(
     async (content: string) => {
       setIsSending(true);
       setStreamError(null);
 
-      const now = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      /* 1. add user message */
+      /* 1. Add user message */
       const userMsg: Message = {
         id: `u-${Date.now()}`,
         role: "user",
         content,
-        timestamp: now,
+        timestamp: now(),
       };
 
       setMessages((prev) => [...prev, userMsg]);
 
-      /* 2. add AI placeholder */
+      /* 2. Add AI placeholder */
       const aiId = `a-${Date.now() + 1}`;
       const aiPlaceholder: Message = {
         id: aiId,
         role: "assistant",
         content: "",
-        timestamp: now,
+        timestamp: now(),
       };
 
       setMessages((prev) => [...prev, aiPlaceholder]);
 
-      /* 3. stream from API */
+      let aiContent = "";
+      let aiEmotion: Emotion | undefined;
+
+      /* 3. Stream from API */
       try {
         const payload = buildMessagesPayload(messages, content);
 
-        for await (const event of streamChat(payload, locale)) {
+        for await (const event of streamChat(payload, locale, DEMO_USER)) {
           switch (event.type) {
             case "text_delta":
+              aiContent += event.content;
               setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === aiId
-                    ? { ...m, content: m.content + event.content }
-                    : m,
+                  m.id === aiId ? { ...m, content: m.content + event.content } : m,
                 ),
               );
               break;
 
             case "emotion":
+              aiEmotion = {
+                type: event.emotion.type as Emotion["type"],
+                label: event.emotion.label,
+              };
               setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === aiId
-                    ? {
-                        ...m,
-                        emotion: {
-                          type: event.emotion.type as Emotion["type"],
-                          label: event.emotion.label,
-                        },
-                      }
-                    : m,
+                  m.id === aiId ? { ...m, emotion: aiEmotion } : m,
                 ),
               );
               break;
@@ -275,12 +342,7 @@ export default function ChatPage() {
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === aiId
-                    ? {
-                        ...m,
-                        content:
-                          m.content ||
-                          `⚠️ ${event.message}`,
-                      }
+                    ? { ...m, content: m.content || `⚠️ ${event.message}` }
                     : m,
                 ),
               );
@@ -288,56 +350,62 @@ export default function ChatPage() {
               break;
 
             case "done":
-              /* stream complete */
+              /* ── Save to KV ── */
+              const allMsgs = [...messages, userMsg];
+              const title =
+                allMsgs.length === 0
+                  ? content.slice(0, 30)
+                  : allMsgs.find((m) => m.role === "user")?.content.slice(0, 30) ?? content.slice(0, 30);
+
+              const conversation: ConversationData = {
+                id: activeId ?? `conv-${Date.now()}`,
+                userId: DEMO_USER,
+                title: title.length > 30 ? title + "…" : title,
+                messages: [
+                  ...allMsgs.map((m) => ({
+                    role: m.role,
+                    content: m.content,
+                    timestamp: m.timestamp,
+                    emotion: m.emotion as Emotion | undefined,
+                  })),
+                  {
+                    role: "assistant" as const,
+                    content: aiContent,
+                    timestamp: now(),
+                    emotion: aiEmotion,
+                  },
+                ],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+
+              saveConversation(DEMO_USER, conversation)
+                .then(() => reloadConversations())
+                .catch((e) => console.error("[chat] Save failed:", e));
               break;
           }
         }
       } catch (err: unknown) {
-        const msg =
-          err instanceof Error ? err.message : "Connection failed";
+        const msg = err instanceof Error ? err.message : "Connection failed";
         setMessages((prev) =>
           prev.map((m) =>
             m.id === aiId
-              ? {
-                  ...m,
-                  content:
-                    m.content ||
-                    `⚠️ ${msg}. ${dict.apiKeyMissing}`,
-                }
+              ? { ...m, content: m.content || `⚠️ ${msg}` }
               : m,
           ),
         );
         setStreamError(msg);
       } finally {
         setIsSending(false);
-
-        /* update conversation title from first user message */
-        if (messages.length === 0) {
-          const title =
-            content.length > 30 ? content.slice(0, 30) + "…" : content;
-          setConversations((prev) =>
-            prev.map((c) =>
-              c.id === activeId ? { ...c, title, lastMessage: content } : c,
-            ),
-          );
-        } else {
-          setConversations((prev) =>
-            prev.map((c) =>
-              c.id === activeId
-                ? { ...c, lastMessage: content }
-                : c,
-            ),
-          );
-        }
       }
     },
-    [messages, locale, activeId, dict],
+    [messages, locale, activeId, reloadConversations],
   );
 
-  /* ── sidebar labels ── */
+  /* ── Sidebar labels ── */
   const sidebarLabels = {
     newChat: dict.newChat,
-    search: dict.search,
+    search: "",
     today: dict.today,
     yesterday: dict.yesterday,
     noConversations: dict.noConversations,
@@ -367,21 +435,10 @@ export default function ChatPage() {
         >
           <button
             onClick={() => setSidebarOpen(true)}
-            className={cn(
-              "lg:hidden p-2 -ml-1 rounded-card",
-              "text-warm-600 hover:text-foreground hover:bg-muted",
-              "transition-colors duration-400",
-            )}
+            className="lg:hidden p-2 -ml-1 rounded-card text-warm-600 hover:text-foreground hover:bg-muted transition-colors duration-400"
             aria-label={dict.menuOpen}
           >
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-            >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
               <line x1="3" y1="18" x2="21" y2="18" />
@@ -389,61 +446,42 @@ export default function ChatPage() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-semibold text-foreground truncate">
-              {dict.title}
-            </h1>
+            <h1 className="text-base font-semibold text-foreground truncate">{dict.title}</h1>
             <p className="text-xs text-warm-400 truncate">{dict.subtitle}</p>
           </div>
 
-          {/* stream error indicator */}
           {streamError && (
-            <span
-              className="hidden sm:inline text-xs text-blush-600 dark:text-blush-400 truncate max-w-[200px]"
-              title={streamError}
-            >
+            <span className="hidden sm:inline text-xs text-blush-600 dark:text-blush-400 truncate max-w-[200px]" title={streamError}>
               ⚠ {streamError}
             </span>
           )}
         </header>
 
         {/* ── 消息滚动区 ── */}
-        <div
-          className={cn(
-            "flex-1 overflow-y-auto px-4 md:px-6 py-6",
-            "scroll-smooth scroll-py-4",
-            "chat-scrollbar",
-          )}
-        >
-          {messages.length === 0 ? (
-            /* 空状态 */
+        <div className={cn("flex-1 overflow-y-auto px-4 md:px-6 py-6", "scroll-smooth scroll-py-4", "chat-scrollbar")}>
+          {isLoading || isLoadingConv ? (
+            /* Loading state */
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-mint-400 animate-pulse [animation-delay:0ms]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-mint-400 animate-pulse [animation-delay:150ms]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-mint-400 animate-pulse [animation-delay:300ms]" />
+              </div>
+              <p className="text-sm text-warm-400">{dict.loading}</p>
+            </div>
+          ) : messages.length === 0 ? (
+            /* Empty state */
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div
-                className={cn(
-                  "w-20 h-20 rounded-full bg-mint-50 dark:bg-mint-950",
-                  "flex items-center justify-center mb-5",
-                  "shadow-soft-md",
-                )}
-              >
-                <svg
-                  className="w-10 h-10 text-mint-400"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                >
+              <div className={cn("w-20 h-20 rounded-full bg-mint-50 dark:bg-mint-950", "flex items-center justify-center mb-5", "shadow-soft-md")}>
+                <svg className="w-10 h-10 text-mint-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                   <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                   <path d="M8 14s1.5 2 4 2 4-2 4-2" />
                   <line x1="9" y1="9" x2="9.01" y2="9" />
                   <line x1="15" y1="9" x2="15.01" y2="9" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-foreground mb-1">
-                {dict.emptyTitle}
-              </h2>
-              <p className="text-sm text-warm-500 max-w-xs">
-                {dict.emptyDesc}
-              </p>
+              <h2 className="text-lg font-semibold text-foreground mb-1">{dict.emptyTitle}</h2>
+              <p className="text-sm text-warm-500 max-w-xs">{dict.emptyDesc}</p>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto">
@@ -452,19 +490,11 @@ export default function ChatPage() {
                   key={msg.id}
                   role={msg.role}
                   content={msg.content}
-                  emotion={
-                    msg.emotion
-                      ? {
-                          type: msg.emotion.type,
-                          label: msg.emotion.label,
-                        }
-                      : undefined
-                  }
+                  emotion={msg.emotion}
                   timestamp={msg.timestamp}
                 />
               ))}
 
-              {/* loading indicator when streaming */}
               {isSending && (
                 <div className="flex items-start my-3">
                   <div className="flex items-center gap-2 px-5 py-3 rounded-bubble rounded-tl-md bg-muted shadow-soft-sm">
@@ -483,46 +513,20 @@ export default function ChatPage() {
         {/* ── 底部输入框 ── */}
         <ChatInput
           onSend={handleSend}
-          disabled={isSending}
+          disabled={isSending || isLoading}
           placeholder={dict.inputPlaceholder}
         />
       </main>
 
-      {/* ── 自定义滚动条 + 消息淡入 ── */}
+      {/* ── 滚动条 ── */}
       <style jsx>{`
-        .chat-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .chat-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .chat-scrollbar::-webkit-scrollbar-thumb {
-          background: hsl(35, 5%, 75%);
-          border-radius: 999px;
-        }
-        .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: hsl(35, 5%, 60%);
-        }
+        .chat-scrollbar::-webkit-scrollbar { width: 4px; }
+        .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .chat-scrollbar::-webkit-scrollbar-thumb { background: hsl(35, 5%, 75%); border-radius: 999px; }
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(35, 5%, 60%); }
         @media (prefers-color-scheme: dark) {
-          .chat-scrollbar::-webkit-scrollbar-thumb {
-            background: hsl(35, 5%, 35%);
-          }
-          .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: hsl(35, 5%, 50%);
-          }
-        }
-        @keyframes msgFadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .msg-enter {
-          animation: msgFadeIn 350ms ease-out both;
+          .chat-scrollbar::-webkit-scrollbar-thumb { background: hsl(35, 5%, 35%); }
+          .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(35, 5%, 50%); }
         }
       `}</style>
     </div>

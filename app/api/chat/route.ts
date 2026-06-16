@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { canUserChat, incrementUserUsage } from "@/lib/kv";
 
 /* ═══════════════════════════════════════════════════════════
    POST /api/chat — SSE streaming + emotion detection
@@ -24,6 +25,7 @@ interface ChatRequestBody {
   messages: { role: "user" | "assistant"; content: string }[];
   locale?: string;
   model?: string;
+  userId?: string;
 }
 
 /* ── Multi‑language emotion labels ── */
@@ -171,7 +173,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, locale = "en", model = "claude-sonnet-4-6" } = body;
+  const { messages, locale = "en", model = "claude-sonnet-4-6", userId } = body;
+
+  /* ── userId 校验 ── */
+  if (!userId || typeof userId !== "string") {
+    return Response.json(
+      { error: '"userId" is required' },
+      { status: 400 },
+    );
+  }
+
+  /* ── 用量检查 ── */
+  const { allowed, reason } = await canUserChat(userId);
+  if (!allowed) {
+    return Response.json({ error: reason }, { status: 429 });
+  }
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return Response.json(
@@ -253,6 +269,11 @@ export async function POST(req: NextRequest) {
         /* ── Done ── */
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`),
+        );
+
+        /* 更新用量（fire-and-forget，不阻塞流关闭） */
+        incrementUserUsage(userId).catch((e) =>
+          console.warn("[chat] Failed to increment usage:", e),
         );
 
         controller.close();

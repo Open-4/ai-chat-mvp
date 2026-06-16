@@ -8,5 +8,21 @@
   "cancel": "Cancelar",
   "delete": "Eliminar",
   "loading": "Cargando...",
-  "error": "Ocurrió un error"
+  "error": "Ocurrió un error",
+  "chat": {
+    "title": "Compañero IA",
+    "subtitle": "Tu suave compañero de sanación",
+    "newChat": "Nueva charla",
+    "search": "Buscar conversaciones…",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "noConversations": "Aún no hay conversaciones",
+    "inputPlaceholder": "Comparte cómo te sientes…",
+    "emotionPositive": "Cálido",
+    "emotionGentle": "Tierno",
+    "emotionCalm": "Calma",
+    "menuOpen": "Abrir menú",
+    "emptyTitle": "Inicia una conversación",
+    "emptyDesc": "Estoy aquí para escuchar. ¿Cómo te sientes hoy?"
+  }
 }

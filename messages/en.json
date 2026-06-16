@@ -8,5 +8,21 @@
   "cancel": "Cancel",
   "delete": "Delete",
   "loading": "Loading...",
-  "error": "An error occurred"
+  "error": "An error occurred",
+  "chat": {
+    "title": "AI Companion",
+    "subtitle": "Your gentle healing partner",
+    "newChat": "New Chat",
+    "search": "Search conversations…",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "noConversations": "No conversations yet",
+    "inputPlaceholder": "Share how you feel…",
+    "emotionPositive": "Warm",
+    "emotionGentle": "Tender",
+    "emotionCalm": "Calm",
+    "menuOpen": "Open sidebar",
+    "emptyTitle": "Start a conversation",
+    "emptyDesc": "I'm here to listen. How are you feeling today?"
+  }
 }

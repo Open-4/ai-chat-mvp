@@ -1,0 +1,418 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
+import ChatSidebar, { type ConversationItem } from "./_components/ChatSidebar";
+import ChatBubble, { type Emotion } from "./_components/ChatBubble";
+import ChatInput from "./_components/ChatInput";
+
+/* ── helpers ── */
+function cn(...classes: (string | undefined | false | null)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
+
+/* ═══════════════════════════════════════════
+   多语言词典
+   ═══════════════════════════════════════════ */
+const t: Record<string, Record<string, string>> = {
+  en: {
+    title: "AI Companion",
+    subtitle: "Your gentle healing partner",
+    newChat: "New Chat",
+    search: "Search conversations…",
+    today: "Today",
+    yesterday: "Yesterday",
+    noConversations: "No conversations yet",
+    inputPlaceholder: "Share how you feel…",
+    emotionPositive: "Warm",
+    emotionGentle: "Tender",
+    emotionCalm: "Calm",
+    menuOpen: "Open sidebar",
+    emptyTitle: "Start a conversation",
+    emptyDesc: "I'm here to listen. How are you feeling today?",
+  },
+  es: {
+    title: "Compañero IA",
+    subtitle: "Tu suave compañero de sanación",
+    newChat: "Nueva charla",
+    search: "Buscar conversaciones…",
+    today: "Hoy",
+    yesterday: "Ayer",
+    noConversations: "Aún no hay conversaciones",
+    inputPlaceholder: "Comparte cómo te sientes…",
+    emotionPositive: "Cálido",
+    emotionGentle: "Tierno",
+    emotionCalm: "Calma",
+    menuOpen: "Abrir menú",
+    emptyTitle: "Inicia una conversación",
+    emptyDesc: "Estoy aquí para escuchar. ¿Cómo te sientes hoy?",
+  },
+  fr: {
+    title: "Compagnon IA",
+    subtitle: "Ton doux partenaire de guérison",
+    newChat: "Nouvelle discussion",
+    search: "Rechercher des conversations…",
+    today: "Aujourd'hui",
+    yesterday: "Hier",
+    noConversations: "Pas encore de conversations",
+    inputPlaceholder: "Partage ce que tu ressens…",
+    emotionPositive: "Chaleureux",
+    emotionGentle: "Tendre",
+    emotionCalm: "Calme",
+    menuOpen: "Ouvrir le menu",
+    emptyTitle: "Commencer une conversation",
+    emptyDesc: "Je suis là pour t'écouter. Comment te sens-tu aujourd'hui ?",
+  },
+};
+
+/* ═══════════════════════════════════════════
+   模拟对话数据（带情绪标签）
+   ═══════════════════════════════════════════ */
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  emotion?: Emotion;
+  timestamp: string;
+};
+
+const demoMessages: Record<string, Message[]> = {
+  "conv-1": [
+    {
+      id: "m1",
+      role: "user",
+      content: "Hey there… I've been feeling a bit anxious lately.",
+      timestamp: "10:32 AM",
+    },
+    {
+      id: "m2",
+      role: "assistant",
+      content:
+        "Thank you for sharing that with me. Anxiety can feel heavy, but it's completely normal. Would you like to try a gentle breathing exercise together? 🌿",
+      emotion: { type: "gentle", label: "Tender" },
+      timestamp: "10:33 AM",
+    },
+    {
+      id: "m3",
+      role: "user",
+      content: "Yes, that would be helpful. What should I do?",
+      timestamp: "10:34 AM",
+    },
+    {
+      id: "m4",
+      role: "assistant",
+      content:
+        "Let's start simple. Breathe in slowly through your nose for 4 counts… hold for 4… and exhale through your mouth for 6 counts. Repeat this three times. I'm right here with you. 💚",
+      emotion: { type: "calm", label: "Calm" },
+      timestamp: "10:35 AM",
+    },
+    {
+      id: "m5",
+      role: "user",
+      content:
+        "I did it. I actually feel a little lighter now. Thank you 😌",
+      timestamp: "10:38 AM",
+    },
+    {
+      id: "m6",
+      role: "assistant",
+      content:
+        "That's wonderful to hear! Even small moments of calm are victories. Remember, I'm always here whenever you need a gentle space to breathe.",
+      emotion: { type: "positive", label: "Warm" },
+      timestamp: "10:39 AM",
+    },
+  ],
+  "conv-2": [
+    {
+      id: "m7",
+      role: "user",
+      content: "I had a really tough day at work today.",
+      timestamp: "Yesterday",
+    },
+    {
+      id: "m8",
+      role: "assistant",
+      content:
+        "I hear you. Tough days can leave us feeling drained. Want to tell me what happened? Or would you prefer a distraction?",
+      emotion: { type: "gentle", label: "Tender" },
+      timestamp: "Yesterday",
+    },
+  ],
+  "conv-3": [
+    {
+      id: "m9",
+      role: "user",
+      content: "Can you tell me something uplifting?",
+      timestamp: "Monday",
+    },
+    {
+      id: "m10",
+      role: "assistant",
+      content:
+        "Of course! Here's a thought: you've made it through 100% of your hardest days so far. That's a pretty incredible track record. 🌟 You're stronger than you know.",
+      emotion: { type: "positive", label: "Warm" },
+      timestamp: "Monday",
+    },
+  ],
+};
+
+const demoConversations: ConversationItem[] = [
+  {
+    id: "conv-1",
+    title: "Feeling anxious",
+    lastMessage: "That's wonderful to hear! Even small…",
+    date: "Today",
+  },
+  {
+    id: "conv-2",
+    title: "Tough day at work",
+    lastMessage: "I hear you. Tough days can leave…",
+    date: "Yesterday",
+  },
+  {
+    id: "conv-3",
+    title: "Something uplifting",
+    lastMessage: "Of course! Here's a thought…",
+    date: "Monday",
+  },
+];
+
+/* ═══════════════════════════════════════════
+   Page
+   ═══════════════════════════════════════════ */
+export default function ChatPage() {
+  const { locale } = useParams<{ locale: string }>();
+  const dict = t[locale] ?? t.en;
+
+  /* emotion 标签多语言映射 */
+  const emotionLabels: Record<string, string> = {
+    Warm: dict.emotionPositive,
+    Tender: dict.emotionGentle,
+    Calm: dict.emotionCalm,
+  };
+
+  /* ── 状态 ── */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>("conv-1");
+  const [conversations] = useState<ConversationItem[]>(demoConversations);
+  const [messages, setMessages] = useState<Message[]>(
+    () => demoMessages["conv-1"] ?? [],
+  );
+  const [isSending, setIsSending] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  /* ── 自动滚底 ── */
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  /* ── 切换会话 ── */
+  const handleSelect = (id: string) => {
+    setActiveId(id);
+    setMessages(demoMessages[id] ?? []);
+    setSidebarOpen(false);
+  };
+
+  /* ── 新建会话 ── */
+  const handleNew = () => {
+    const id = `conv-${Date.now()}`;
+    const newConv: ConversationItem = {
+      id,
+      title: dict.newChat,
+      lastMessage: "",
+      date: dict.today,
+    };
+    // 简单追加到本地状态（实际项目需持久化）
+    setActiveId(id);
+    setMessages([]);
+    setSidebarOpen(false);
+    // 注意：此处简化处理，conv 列表未动态更新
+  };
+
+  /* ── 发送消息 ── */
+  const handleSend = async (content: string) => {
+    setIsSending(true);
+
+    const userMsg: Message = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+
+    /* 模拟 AI 延迟 */
+    await new Promise((r) => setTimeout(r, 800 + Math.random() * 1200));
+
+    const emotions: Emotion[] = [
+      { type: "positive", label: emotionLabels.Warm ?? dict.emotionPositive },
+      { type: "gentle", label: emotionLabels.Tender ?? dict.emotionGentle },
+      { type: "calm", label: emotionLabels.Calm ?? dict.emotionCalm },
+    ];
+
+    const aiMsg: Message = {
+      id: `a-${Date.now()}`,
+      role: "assistant",
+      content:
+        "Thank you for sharing. I'm here to listen, always. Would you like to explore this feeling together, or would a quiet moment feel better right now? 💛",
+      emotion: emotions[Math.floor(Math.random() * emotions.length)],
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setMessages((prev) => [...prev, aiMsg]);
+    setIsSending(false);
+  };
+
+  /* ── sidebar labels ── */
+  const sidebarLabels = {
+    newChat: dict.newChat,
+    search: dict.search,
+    today: dict.today,
+    yesterday: dict.yesterday,
+    noConversations: dict.noConversations,
+  };
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* ═══ 侧边栏 ═══ */}
+      <ChatSidebar
+        conversations={conversations}
+        activeId={activeId}
+        onSelect={handleSelect}
+        onNew={handleNew}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        labels={sidebarLabels}
+      />
+
+      {/* ═══ 右侧对话区 ═══ */}
+      <main className="flex-1 flex flex-col min-w-0 h-full">
+        {/* ── 顶部栏 ── */}
+        <header
+          className={cn(
+            "shrink-0 flex items-center gap-3 px-4 md:px-6 py-3",
+            "border-b border-border bg-surface/60 backdrop-blur-md",
+          )}
+        >
+          {/* 移动端菜单按钮 */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className={cn(
+              "lg:hidden p-2 -ml-1 rounded-card",
+              "text-warm-600 hover:text-foreground hover:bg-muted",
+              "transition-colors duration-400",
+            )}
+            aria-label={dict.menuOpen}
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-semibold text-foreground truncate">
+              {dict.title}
+            </h1>
+            <p className="text-xs text-warm-400 truncate">{dict.subtitle}</p>
+          </div>
+        </header>
+
+        {/* ── 消息滚动区 ── */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+          {messages.length === 0 ? (
+            /* 空状态 */
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div
+                className={cn(
+                  "w-20 h-20 rounded-full bg-mint-50 dark:bg-mint-950",
+                  "flex items-center justify-center mb-5",
+                  "shadow-soft-md",
+                )}
+              >
+                <svg
+                  className="w-10 h-10 text-mint-400"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                >
+                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                  <line x1="9" y1="9" x2="9.01" y2="9" />
+                  <line x1="15" y1="9" x2="15.01" y2="9" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-1">
+                {dict.emptyTitle}
+              </h2>
+              <p className="text-sm text-warm-500 max-w-xs">
+                {dict.emptyDesc}
+              </p>
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto">
+              {messages.map((msg) => (
+                <ChatBubble
+                  key={msg.id}
+                  role={msg.role}
+                  content={msg.content}
+                  emotion={
+                    msg.emotion
+                      ? {
+                          type: msg.emotion.type,
+                          label: msg.emotion.label,
+                        }
+                      : undefined
+                  }
+                  timestamp={msg.timestamp}
+                />
+              ))}
+
+              {/* 发送中骨架 */}
+              {isSending && (
+                <div className="flex items-start my-2">
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-bubble rounded-tl-md bg-muted">
+                    <span className="w-2 h-2 rounded-full bg-mint-400 animate-pulse [animation-delay:0ms]" />
+                    <span className="w-2 h-2 rounded-full bg-mint-400 animate-pulse [animation-delay:150ms]" />
+                    <span className="w-2 h-2 rounded-full bg-mint-400 animate-pulse [animation-delay:300ms]" />
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* ── 底部输入框 ── */}
+        <ChatInput
+          onSend={handleSend}
+          disabled={isSending}
+          placeholder={dict.inputPlaceholder}
+        />
+      </main>
+    </div>
+  );
+}

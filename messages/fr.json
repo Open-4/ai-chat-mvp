@@ -8,5 +8,21 @@
   "cancel": "Annuler",
   "delete": "Supprimer",
   "loading": "Chargement...",
-  "error": "Une erreur est survenue"
+  "error": "Une erreur est survenue",
+  "chat": {
+    "title": "Compagnon IA",
+    "subtitle": "Ton doux partenaire de guérison",
+    "newChat": "Nouvelle discussion",
+    "search": "Rechercher des conversations…",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "noConversations": "Pas encore de conversations",
+    "inputPlaceholder": "Partage ce que tu ressens…",
+    "emotionPositive": "Chaleureux",
+    "emotionGentle": "Tendre",
+    "emotionCalm": "Calme",
+    "menuOpen": "Ouvrir le menu",
+    "emptyTitle": "Commencer une conversation",
+    "emptyDesc": "Je suis là pour t'écouter. Comment te sens-tu aujourd'hui ?"
+  }
 }

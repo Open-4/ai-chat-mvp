@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -18,106 +18,124 @@ const t: Record<string, Record<string, string>> = {
     subtitle: "Start free. Upgrade when you're ready.",
     monthly: "Monthly",
     yearly: "Yearly",
-    save: "Save 33%",
+    save: "Save 20%",
     free: "Free",
     pro: "Pro",
     recommended: "Recommended",
     month: "/mo",
     year: "/yr",
     freePrice: "$0",
-    proMonthly: "$9.99",
-    proYearly: "$79.99",
-    ctaFree: "Get Started",
-    ctaPro: "Start Free Trial",
-    processing: "Redirecting…",
+    proMonthly: "$9.90",
+    proYearly: "$95.90",
+    ctaFree: "Get Started Free",
+    ctaPro: "Upgrade with PayPal",
+    paypalLoading: "Loading PayPal…",
+    processing: "Completing payment…",
+    success: "Payment successful! You're now Pro 💚",
+    errorPaypal: "PayPal SDK failed to load. Please refresh.",
+    errorPayment: "Payment failed. Please try again.",
     features: {
       chat: "AI companion chat",
       journal: "Emotion journal",
       breathe: "Breathing exercises",
       history: "Mood history",
-      unlimited: "Unlimited messages",
-      priority: "Priority response",
+      unlimited: "Unlimited daily messages",
+      priority: "Priority AI response",
       early: "Early access to new tools",
       custom: "Custom emotion insights",
     },
     back: "Back",
-    error: "Payment service unavailable. Please try later.",
   },
   es: {
     title: "Precios simples y suaves",
     subtitle: "Empieza gratis. Mejora cuando estés listo.",
     monthly: "Mensual",
     yearly: "Anual",
-    save: "Ahorra 33%",
+    save: "Ahorra 20%",
     free: "Gratis",
     pro: "Pro",
     recommended: "Recomendado",
     month: "/mes",
     year: "/año",
     freePrice: "$0",
-    proMonthly: "$9.99",
-    proYearly: "$79.99",
-    ctaFree: "Empezar",
-    ctaPro: "Prueba gratis",
-    processing: "Redirigiendo…",
+    proMonthly: "$9.90",
+    proYearly: "$95.90",
+    ctaFree: "Empezar gratis",
+    ctaPro: "Actualizar con PayPal",
+    paypalLoading: "Cargando PayPal…",
+    processing: "Completando pago…",
+    success: "¡Pago exitoso! Ahora eres Pro 💚",
+    errorPaypal: "PayPal SDK no cargó. Refresca la página.",
+    errorPayment: "Pago fallido. Intenta de nuevo.",
     features: {
       chat: "Chat con compañero IA",
       journal: "Diario de emociones",
       breathe: "Ejercicios de respiración",
       history: "Historial de ánimo",
-      unlimited: "Mensajes ilimitados",
+      unlimited: "Mensajes diarios ilimitados",
       priority: "Respuesta prioritaria",
-      early: "Acceso anticipado a nuevas herramientas",
-      custom: "Informes emocionales personalizados",
+      early: "Acceso anticipado",
+      custom: "Informes emocionales",
     },
     back: "Volver",
-    error: "Servicio de pago no disponible. Intenta más tarde.",
   },
   fr: {
     title: "Des prix simples et doux",
-    subtitle: "Commence gratuitement. Passe à la version supérieure quand tu es prêt.",
+    subtitle: "Commence gratuitement. Passe Pro quand tu es prêt.",
     monthly: "Mensuel",
     yearly: "Annuel",
-    save: "Économise 33%",
+    save: "Économise 20%",
     free: "Gratuit",
     pro: "Pro",
     recommended: "Recommandé",
     month: "/mois",
     year: "/an",
     freePrice: "$0",
-    proMonthly: "$9.99",
-    proYearly: "$79.99",
-    ctaFree: "Commencer",
-    ctaPro: "Essai gratuit",
-    processing: "Redirection…",
+    proMonthly: "$9.90",
+    proYearly: "$95.90",
+    ctaFree: "Commencer gratuitement",
+    ctaPro: "Passer Pro avec PayPal",
+    paypalLoading: "Chargement de PayPal…",
+    processing: "Paiement en cours…",
+    success: "Paiement réussi ! Tu es maintenant Pro 💚",
+    errorPaypal: "PayPal SDK n'a pas chargé. Rafraîchis.",
+    errorPayment: "Paiement échoué. Réessaie.",
     features: {
       chat: "Chat avec compagnon IA",
       journal: "Journal d'émotions",
       breathe: "Exercices de respiration",
       history: "Historique d'humeur",
-      unlimited: "Messages illimités",
+      unlimited: "Messages quotidiens illimités",
       priority: "Réponse prioritaire",
-      early: "Accès anticipé aux nouveaux outils",
-      custom: "Aperçus émotionnels personnalisés",
+      early: "Accès anticipé",
+      custom: "Aperçus émotionnels",
     },
     back: "Retour",
-    error: "Service de paiement indisponible. Réessaie plus tard.",
   },
 };
 
 /* ═══════════════════════════════════════════
-   Plan definitions
+   Plan config
    ═══════════════════════════════════════════ */
 const freeFeatures = ["chat", "journal", "breathe", "history"] as const;
-const proFeatures = [
-  ...freeFeatures,
-  "unlimited",
-  "priority",
-  "early",
-  "custom",
-] as const;
+const proFeatures = [...freeFeatures, "unlimited", "priority", "early", "custom"] as const;
 
 const DEMO_USER = "demo-user-001";
+
+/* PayPal SDK type (minimal) */
+declare global {
+  interface Window {
+    paypal?: {
+      Buttons: (options: {
+        style?: Record<string, string>;
+        createOrder: () => Promise<string>;
+        onApprove: (data: { orderID: string }) => Promise<void>;
+        onError: (err: Error) => void;
+        onCancel: () => void;
+      }) => { render: (el: string) => void; close: () => void };
+    };
+  }
+}
 
 /* ═══════════════════════════════════════════
    Page
@@ -128,44 +146,124 @@ export default function PricingPage() {
   const features = dict.features as Record<string, string>;
 
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* ── Stripe checkout ── */
-  const handleCheckout = async () => {
-    setIsRedirecting(true);
-    setError(null);
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const paypalInstance = useRef<{ close: () => void } | null>(null);
 
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: DEMO_USER,
-          billing,
-          locale,
-          successUrl: `${window.location.origin}/${locale}/chat`,
-          cancelUrl: `${window.location.origin}/${locale}/pricing`,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.url) {
-        throw new Error(data.error ?? "Failed to create session");
-      }
-
-      window.location.href = data.url;
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : dict.error,
-      );
-      setIsRedirecting(false);
+  /* ── Load PayPal JS SDK ── */
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+    if (!clientId) {
+      setError("NEXT_PUBLIC_PAYPAL_CLIENT_ID not configured");
+      return;
     }
-  };
 
-  const proPrice =
-    billing === "monthly" ? dict.proMonthly : dict.proYearly;
+    /* avoid duplicate script */
+    if (document.querySelector('script[src*="paypal.com/sdk"]')) {
+      if (window.paypal) setSdkReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
+    script.async = true;
+    script.onload = () => setSdkReady(true);
+    script.onerror = () => setError(dict.errorPaypal);
+    document.body.appendChild(script);
+
+    return () => {
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+  }, [dict.errorPaypal]);
+
+  /* ── Render PayPal button ── */
+  useEffect(() => {
+    if (!sdkReady || !window.paypal || !buttonRef.current) return;
+    if (paypalInstance.current) {
+      paypalInstance.current.close();
+    }
+
+    /* clear container */
+    buttonRef.current.innerHTML = "";
+
+    const instance = window.paypal.Buttons({
+      style: {
+        shape: "pill",
+        color: "white",
+        layout: "vertical",
+        label: "subscribe",
+        tagline: false,
+      },
+
+      createOrder: async () => {
+        setError(null);
+
+        const res = await fetch("/api/paypal/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: DEMO_USER, billing, locale }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.orderId) {
+          throw new Error(data.error ?? "Failed to create order");
+        }
+
+        return data.orderId as string;
+      },
+
+      onApprove: async (data: { orderID: string }) => {
+        setIsProcessing(true);
+        setError(null);
+
+        try {
+          const res = await fetch("/api/paypal/capture-order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: data.orderID,
+              userId: DEMO_USER,
+            }),
+          });
+
+          const result = await res.json();
+          if (!res.ok) {
+            throw new Error(result.error ?? "Capture failed");
+          }
+
+          setSuccess(true);
+          setIsProcessing(false);
+        } catch (err) {
+          setError(
+            err instanceof Error ? err.message : dict.errorPayment,
+          );
+          setIsProcessing(false);
+        }
+      },
+
+      onError: (err: Error) => {
+        console.error("[paypal] Button error:", err);
+        setError(err.message ?? dict.errorPayment);
+      },
+
+      onCancel: () => {
+        console.log("[paypal] Payment cancelled by user");
+      },
+    });
+
+    instance.render("#paypal-button-container");
+    paypalInstance.current = instance;
+
+    return () => {
+      instance.close();
+    };
+  }, [sdkReady, billing, locale, dict]);
+
+  const proPrice = billing === "monthly" ? dict.proMonthly : dict.proYearly;
 
   return (
     <div className="min-h-screen bg-background">
@@ -294,7 +392,7 @@ export default function PricingPage() {
                   key={k}
                   className={cn(
                     "flex items-start gap-2.5 text-sm",
-                    k === "unlimited" || k === "priority" || k === "early" || k === "custom"
+                    ["unlimited", "priority", "early", "custom"].includes(k)
                       ? "text-foreground font-medium"
                       : "text-warm-600 dark:text-warm-300",
                   )}
@@ -307,32 +405,30 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <button
-              onClick={handleCheckout}
-              disabled={isRedirecting}
-              className={cn(
-                "w-full px-5 py-3 rounded-card text-sm font-medium",
-                "bg-mint-500 text-white",
-                "hover:bg-mint-600 active:bg-mint-700",
-                "shadow-soft-md hover:shadow-soft-lg",
-                "transition-all duration-400",
-                "active:scale-[0.98]",
-                "disabled:opacity-70 disabled:cursor-wait",
-                "flex items-center justify-center gap-2",
-              )}
-            >
-              {isRedirecting ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {dict.processing}
-                </>
-              ) : (
-                dict.ctaPro
-              )}
-            </button>
+            {/* ── PayPal button area ── */}
+            {success ? (
+              <div className="w-full px-5 py-3 rounded-card bg-mint-50 dark:bg-mint-950 text-mint-700 dark:text-mint-300 text-sm font-medium text-center">
+                {dict.success}
+              </div>
+            ) : !sdkReady ? (
+              <div className="w-full px-5 py-3 rounded-card bg-muted text-warm-400 text-sm text-center animate-pulse">
+                {dict.paypalLoading}
+              </div>
+            ) : isProcessing ? (
+              <div className="w-full px-5 py-3 rounded-card bg-muted text-warm-500 text-sm text-center flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {dict.processing}
+              </div>
+            ) : (
+              <div
+                id="paypal-button-container"
+                ref={buttonRef}
+                className="w-full min-h-[40px]"
+              />
+            )}
           </div>
         </div>
 

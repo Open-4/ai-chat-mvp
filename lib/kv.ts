@@ -466,3 +466,85 @@ export async function initializeUser(userId: string): Promise<void> {
     throw new Error("Failed to initialize user");
   }
 }
+
+/* ═══════════════════════════════════════════
+   4. 情绪日记
+   ═══════════════════════════════════════════ */
+
+export interface JournalEntry {
+  id: string;
+  userId: string;
+  content: string;
+  emotion: string;
+  emotionLabel: string;
+  date: string; // "2026-06-16"
+  timestamp: string;
+}
+
+/** 保存单条日记 */
+export async function saveJournalEntry(
+  userId: string,
+  entry: JournalEntry,
+): Promise<void> {
+  if (!userId || !entry.id) {
+    throw new Error("[kv] userId and entry.id are required");
+  }
+
+  try {
+    const key = `user:${userId}:journal:${entry.date}`;
+    const entries = await readJSON<JournalEntry[]>(key);
+    const list = entries ?? [];
+    list.push(entry);
+    await writeJSON(key, list);
+  } catch (err) {
+    console.error(`[kv] saveJournalEntry failed for "${userId}":`, err);
+    throw new Error("Failed to save journal entry");
+  }
+}
+
+/** 获取某天的日记列表 */
+export async function getJournalEntries(
+  userId: string,
+  date: string,
+): Promise<JournalEntry[]> {
+  if (!userId || !date) throw new Error("[kv] userId and date are required");
+
+  try {
+    const key = `user:${userId}:journal:${date}`;
+    const entries = await readJSON<JournalEntry[]>(key);
+    return entries ?? [];
+  } catch (err) {
+    console.error(`[kv] getJournalEntries failed for "${userId}/${date}":`, err);
+    return [];
+  }
+}
+
+/** 获取所有日记日期列表（摘要） */
+export async function getJournalDates(
+  userId: string,
+): Promise<{ date: string; count: number; emotion: string }[]> {
+  if (!userId) throw new Error("[kv] userId is required");
+
+  try {
+    const kv = getKV();
+    const result = await kv.list({ prefix: `user:${userId}:journal:` });
+    const dates: { date: string; count: number; emotion: string }[] = [];
+
+    for (const { name } of result.keys) {
+      const date = name.split(":journal:")[1];
+      if (!date) continue;
+      const entries = await readJSON<JournalEntry[]>(name);
+      const last = entries?.[entries.length - 1];
+      dates.push({
+        date,
+        count: entries?.length ?? 0,
+        emotion: last?.emotion ?? "calm",
+      });
+    }
+
+    return dates.sort((a, b) => b.date.localeCompare(a.date));
+  } catch (err) {
+    console.error(`[kv] getJournalDates failed for "${userId}":`, err);
+    return [];
+  }
+}

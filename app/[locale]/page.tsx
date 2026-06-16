@@ -32,9 +32,9 @@ const t: Record<string, Record<string, string>> = {
       { key: "confused", label: "Confused", emoji: "😶" },
     ],
     toolsList: [
-      { key: "breathe", title: "Breathing", desc: "4-4-6 gentle breath guide", icon: "🌿" },
-      { key: "journal", title: "Journal", desc: "Write down your thoughts", icon: "📝" },
-      { key: "mindful", title: "Mindfulness", desc: "A moment of presence", icon: "🧘" },
+      { key: "breathe", title: "Breathing", desc: "4-4-6 gentle breath guide", icon: "🌿", href: "/tools" },
+      { key: "journal", title: "Journal", desc: "Write down your thoughts", icon: "📝", href: "/journal" },
+      { key: "mindful", title: "Mindfulness", desc: "A moment of presence", icon: "🧘", href: "/chat" },
     ],
     nav: {
       chat: "Chat",
@@ -62,9 +62,9 @@ const t: Record<string, Record<string, string>> = {
       { key: "confused", label: "Confuso", emoji: "😶" },
     ],
     toolsList: [
-      { key: "breathe", title: "Respiración", desc: "Guía de respiración 4-4-6", icon: "🌿" },
-      { key: "journal", title: "Diario", desc: "Escribe tus pensamientos", icon: "📝" },
-      { key: "mindful", title: "Atención plena", desc: "Un momento de presencia", icon: "🧘" },
+      { key: "breathe", title: "Respiración", desc: "Guía de respiración 4-4-6", icon: "🌿", href: "/tools" },
+      { key: "journal", title: "Diario", desc: "Escribe tus pensamientos", icon: "📝", href: "/journal" },
+      { key: "mindful", title: "Atención plena", desc: "Un momento de presencia", icon: "🧘", href: "/chat" },
     ],
     nav: {
       chat: "Chat",
@@ -92,9 +92,9 @@ const t: Record<string, Record<string, string>> = {
       { key: "confused", label: "Confus", emoji: "😶" },
     ],
     toolsList: [
-      { key: "breathe", title: "Respiration", desc: "Guide de respiration 4-4-6", icon: "🌿" },
-      { key: "journal", title: "Journal", desc: "Écris tes pensées", icon: "📝" },
-      { key: "mindful", title: "Pleine conscience", desc: "Un moment de présence", icon: "🧘" },
+      { key: "breathe", title: "Respiration", desc: "Guide de respiration 4-4-6", icon: "🌿", href: "/tools" },
+      { key: "journal", title: "Journal", desc: "Écris tes pensées", icon: "📝", href: "/journal" },
+      { key: "mindful", title: "Pleine conscience", desc: "Un moment de présence", icon: "🧘", href: "/chat" },
     ],
     nav: {
       chat: "Chat",
@@ -283,10 +283,10 @@ export default function HomePage() {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {dict.toolsList.map((item: { key: string; title: string; desc: string; icon: string }) => (
+          {dict.toolsList.map((item: { key: string; title: string; desc: string; icon: string; href: string }) => (
             <Link
               key={item.key}
-              href={`/${locale}/chat`}
+              href={`/${locale}${item.href}`}
               className={cn(
                 "flex items-center gap-4 p-4 rounded-card",
                 "bg-surface border border-border shadow-soft-sm",

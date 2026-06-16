@@ -30,6 +30,7 @@ const t: Record<string, Record<string, string>> = {
     menuOpen: "Open sidebar",
     emptyTitle: "Start a conversation",
     emptyDesc: "I'm here to listen. How are you feeling today?",
+    apiKeyMissing: "API key not configured. Add ANTHROPIC_API_KEY to .env.local",
   },
   es: {
     title: "Compañero IA",
@@ -46,6 +47,7 @@ const t: Record<string, Record<string, string>> = {
     menuOpen: "Abrir menú",
     emptyTitle: "Inicia una conversación",
     emptyDesc: "Estoy aquí para escuchar. ¿Cómo te sientes hoy?",
+    apiKeyMissing: "API key no configurada. Agrega ANTHROPIC_API_KEY a .env.local",
   },
   fr: {
     title: "Compagnon IA",
@@ -62,11 +64,12 @@ const t: Record<string, Record<string, string>> = {
     menuOpen: "Ouvrir le menu",
     emptyTitle: "Commencer une conversation",
     emptyDesc: "Je suis là pour t'écouter. Comment te sens-tu aujourd'hui ?",
+    apiKeyMissing: "Clé API non configurée. Ajoutez ANTHROPIC_API_KEY à .env.local",
   },
 };
 
 /* ═══════════════════════════════════════════
-   模拟对话数据（带情绪标签）
+   Types
    ═══════════════════════════════════════════ */
 type Message = {
   id: string;
@@ -76,106 +79,78 @@ type Message = {
   timestamp: string;
 };
 
-const demoMessages: Record<string, Message[]> = {
-  "conv-1": [
-    {
-      id: "m1",
-      role: "user",
-      content: "Hey there… I've been feeling a bit anxious lately.",
-      timestamp: "10:32 AM",
-    },
-    {
-      id: "m2",
-      role: "assistant",
-      content:
-        "Thank you for sharing that with me. Anxiety can feel heavy, but it's completely normal. Would you like to try a gentle breathing exercise together? 🌿",
-      emotion: { type: "gentle", label: "Tender" },
-      timestamp: "10:33 AM",
-    },
-    {
-      id: "m3",
-      role: "user",
-      content: "Yes, that would be helpful. What should I do?",
-      timestamp: "10:34 AM",
-    },
-    {
-      id: "m4",
-      role: "assistant",
-      content:
-        "Let's start simple. Breathe in slowly through your nose for 4 counts… hold for 4… and exhale through your mouth for 6 counts. Repeat this three times. I'm right here with you. 💚",
-      emotion: { type: "calm", label: "Calm" },
-      timestamp: "10:35 AM",
-    },
-    {
-      id: "m5",
-      role: "user",
-      content:
-        "I did it. I actually feel a little lighter now. Thank you 😌",
-      timestamp: "10:38 AM",
-    },
-    {
-      id: "m6",
-      role: "assistant",
-      content:
-        "That's wonderful to hear! Even small moments of calm are victories. Remember, I'm always here whenever you need a gentle space to breathe.",
-      emotion: { type: "positive", label: "Warm" },
-      timestamp: "10:39 AM",
-    },
-  ],
-  "conv-2": [
-    {
-      id: "m7",
-      role: "user",
-      content: "I had a really tough day at work today.",
-      timestamp: "Yesterday",
-    },
-    {
-      id: "m8",
-      role: "assistant",
-      content:
-        "I hear you. Tough days can leave us feeling drained. Want to tell me what happened? Or would you prefer a distraction?",
-      emotion: { type: "gentle", label: "Tender" },
-      timestamp: "Yesterday",
-    },
-  ],
-  "conv-3": [
-    {
-      id: "m9",
-      role: "user",
-      content: "Can you tell me something uplifting?",
-      timestamp: "Monday",
-    },
-    {
-      id: "m10",
-      role: "assistant",
-      content:
-        "Of course! Here's a thought: you've made it through 100% of your hardest days so far. That's a pretty incredible track record. 🌟 You're stronger than you know.",
-      emotion: { type: "positive", label: "Warm" },
-      timestamp: "Monday",
-    },
-  ],
-};
+type SSEEvent =
+  | { type: "text_delta"; content: string }
+  | { type: "emotion"; emotion: { type: Emotion["type"]; label: string } }
+  | { type: "done" }
+  | { type: "error"; code: string; message: string };
 
-const demoConversations: ConversationItem[] = [
-  {
-    id: "conv-1",
-    title: "Feeling anxious",
-    lastMessage: "That's wonderful to hear! Even small…",
-    date: "Today",
-  },
-  {
-    id: "conv-2",
-    title: "Tough day at work",
-    lastMessage: "I hear you. Tough days can leave…",
-    date: "Yesterday",
-  },
-  {
-    id: "conv-3",
-    title: "Something uplifting",
-    lastMessage: "Of course! Here's a thought…",
-    date: "Monday",
-  },
-];
+/* ═══════════════════════════════════════════
+   SSE streaming API client
+   ═══════════════════════════════════════════ */
+async function* streamChat(
+  messages: { role: string; content: string }[],
+  locale: string,
+): AsyncGenerator<SSEEvent> {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, locale }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(err.error ?? `HTTP ${res.status}`);
+  }
+
+  if (!res.body) {
+    throw new Error("Response body is empty");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+
+        const raw = trimmed.slice(6);
+        if (raw === "[DONE]") return;
+
+        try {
+          yield JSON.parse(raw) as SSEEvent;
+        } catch {
+          /* skip unparseable chunks */
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Helper: build shared messages array
+   ═══════════════════════════════════════════ */
+function buildMessagesPayload(
+  msgs: Message[],
+  newUserContent: string,
+): { role: string; content: string }[] {
+  return [
+    ...msgs.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: newUserContent },
+  ];
+}
 
 /* ═══════════════════════════════════════════
    Page
@@ -184,25 +159,20 @@ export default function ChatPage() {
   const { locale } = useParams<{ locale: string }>();
   const dict = t[locale] ?? t.en;
 
-  /* emotion 标签多语言映射 */
-  const emotionLabels: Record<string, string> = {
-    Warm: dict.emotionPositive,
-    Tender: dict.emotionGentle,
-    Calm: dict.emotionCalm,
-  };
-
-  /* ── 状态 ── */
+  /* ── state ── */
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>("conv-1");
-  const [conversations] = useState<ConversationItem[]>(demoConversations);
-  const [messages, setMessages] = useState<Message[]>(
-    () => demoMessages["conv-1"] ?? [],
-  );
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+
+  /* keep a simple conversations list in-memory */
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  /* ── 自动滚底 ── */
+  /* ── scroll to bottom ── */
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -211,15 +181,10 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  /* ── 切换会话 ── */
-  const handleSelect = (id: string) => {
-    setActiveId(id);
-    setMessages(demoMessages[id] ?? []);
-    setSidebarOpen(false);
-  };
+  /* ── create new conversation ── */
+  const handleNew = useCallback(() => {
+    abortRef.current?.abort(); // cancel any in-flight request
 
-  /* ── 新建会话 ── */
-  const handleNew = () => {
     const id = `conv-${Date.now()}`;
     const newConv: ConversationItem = {
       id,
@@ -227,53 +192,147 @@ export default function ChatPage() {
       lastMessage: "",
       date: dict.today,
     };
-    // 简单追加到本地状态（实际项目需持久化）
+    setConversations((prev) => [newConv, ...prev]);
     setActiveId(id);
     setMessages([]);
+    setStreamError(null);
     setSidebarOpen(false);
-    // 注意：此处简化处理，conv 列表未动态更新
-  };
+  }, [dict]);
 
-  /* ── 发送消息 ── */
-  const handleSend = async (content: string) => {
-    setIsSending(true);
+  /* ── select conversation ── */
+  const handleSelect = useCallback((id: string) => {
+    setActiveId(id);
+    setMessages([]); // MVP: messages not persisted across sessions yet
+    setStreamError(null);
+    setSidebarOpen(false);
+  }, []);
 
-    const userMsg: Message = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content,
-      timestamp: new Date().toLocaleTimeString([], {
+  /* ── send message ── */
+  const handleSend = useCallback(
+    async (content: string) => {
+      setIsSending(true);
+      setStreamError(null);
+
+      const now = new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
-      }),
-    };
+      });
 
-    setMessages((prev) => [...prev, userMsg]);
+      /* 1. add user message */
+      const userMsg: Message = {
+        id: `u-${Date.now()}`,
+        role: "user",
+        content,
+        timestamp: now,
+      };
 
-    /* 模拟 AI 延迟 */
-    await new Promise((r) => setTimeout(r, 800 + Math.random() * 1200));
+      setMessages((prev) => [...prev, userMsg]);
 
-    const emotions: Emotion[] = [
-      { type: "positive", label: emotionLabels.Warm ?? dict.emotionPositive },
-      { type: "gentle", label: emotionLabels.Tender ?? dict.emotionGentle },
-      { type: "calm", label: emotionLabels.Calm ?? dict.emotionCalm },
-    ];
+      /* 2. add AI placeholder */
+      const aiId = `a-${Date.now() + 1}`;
+      const aiPlaceholder: Message = {
+        id: aiId,
+        role: "assistant",
+        content: "",
+        timestamp: now,
+      };
 
-    const aiMsg: Message = {
-      id: `a-${Date.now()}`,
-      role: "assistant",
-      content:
-        "Thank you for sharing. I'm here to listen, always. Would you like to explore this feeling together, or would a quiet moment feel better right now? 💛",
-      emotion: emotions[Math.floor(Math.random() * emotions.length)],
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+      setMessages((prev) => [...prev, aiPlaceholder]);
 
-    setMessages((prev) => [...prev, aiMsg]);
-    setIsSending(false);
-  };
+      /* 3. stream from API */
+      try {
+        const payload = buildMessagesPayload(messages, content);
+
+        for await (const event of streamChat(payload, locale)) {
+          switch (event.type) {
+            case "text_delta":
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiId
+                    ? { ...m, content: m.content + event.content }
+                    : m,
+                ),
+              );
+              break;
+
+            case "emotion":
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiId
+                    ? {
+                        ...m,
+                        emotion: {
+                          type: event.emotion.type as Emotion["type"],
+                          label: event.emotion.label,
+                        },
+                      }
+                    : m,
+                ),
+              );
+              break;
+
+            case "error":
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiId
+                    ? {
+                        ...m,
+                        content:
+                          m.content ||
+                          `⚠️ ${event.message}`,
+                      }
+                    : m,
+                ),
+              );
+              setStreamError(event.message);
+              break;
+
+            case "done":
+              /* stream complete */
+              break;
+          }
+        }
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error ? err.message : "Connection failed";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiId
+              ? {
+                  ...m,
+                  content:
+                    m.content ||
+                    `⚠️ ${msg}. ${dict.apiKeyMissing}`,
+                }
+              : m,
+          ),
+        );
+        setStreamError(msg);
+      } finally {
+        setIsSending(false);
+
+        /* update conversation title from first user message */
+        if (messages.length === 0) {
+          const title =
+            content.length > 30 ? content.slice(0, 30) + "…" : content;
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === activeId ? { ...c, title, lastMessage: content } : c,
+            ),
+          );
+        } else {
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === activeId
+                ? { ...c, lastMessage: content }
+                : c,
+            ),
+          );
+        }
+      }
+    },
+    [messages, locale, activeId, dict],
+  );
 
   /* ── sidebar labels ── */
   const sidebarLabels = {
@@ -306,7 +365,6 @@ export default function ChatPage() {
             "border-b border-border bg-surface/60 backdrop-blur-md",
           )}
         >
-          {/* 移动端菜单按钮 */}
           <button
             onClick={() => setSidebarOpen(true)}
             className={cn(
@@ -336,6 +394,16 @@ export default function ChatPage() {
             </h1>
             <p className="text-xs text-warm-400 truncate">{dict.subtitle}</p>
           </div>
+
+          {/* stream error indicator */}
+          {streamError && (
+            <span
+              className="hidden sm:inline text-xs text-blush-600 dark:text-blush-400 truncate max-w-[200px]"
+              title={streamError}
+            >
+              ⚠ {streamError}
+            </span>
+          )}
         </header>
 
         {/* ── 消息滚动区 ── */}
@@ -396,7 +464,7 @@ export default function ChatPage() {
                 />
               ))}
 
-              {/* 发送中骨架 */}
+              {/* loading indicator when streaming */}
               {isSending && (
                 <div className="flex items-start my-3">
                   <div className="flex items-center gap-2 px-5 py-3 rounded-bubble rounded-tl-md bg-muted shadow-soft-sm">

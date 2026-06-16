@@ -153,7 +153,7 @@ export default function HomePage() {
   /* ── Language switch ── */
   const switchLocale = (next: string) => {
     const path = window.location.pathname.replace(/^\/(en|es|fr)/, `/${next}`);
-    window.location.href = path;
+    router.push(path);
   };
 
   return (
@@ -325,7 +325,7 @@ export default function HomePage() {
           {[
             { key: "chat", icon: ChatIcon, href: `/${locale}/chat` },
             { key: "tools", icon: ToolsIcon, href: `/${locale}/tools` },
-            { key: "records", icon: RecordsIcon, href: `/${locale}/records` },
+            { key: "records", icon: RecordsIcon, href: `/${locale}/history` },
             { key: "me", icon: MeIcon, href: `/${locale}/profile` },
           ].map(({ key, icon: Icon, href }) => {
             const isActive = pathname.startsWith(href);

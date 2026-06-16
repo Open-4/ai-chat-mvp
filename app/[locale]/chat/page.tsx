@@ -176,7 +176,7 @@ export default function ChatPage() {
   /* ── KV-backed state ── */
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConv, setIsLoadingConv] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);

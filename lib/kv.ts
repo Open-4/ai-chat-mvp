@@ -574,3 +574,36 @@ export async function getJournalEntriesByMonth(
     return [];
   }
 }
+
+/* ═══════════════════════════════════════════
+   5. 订阅升级（支付回调用）
+   ═══════════════════════════════════════════ */
+
+/** 将用户升级为 Pro，重置用量限制 */
+export async function upgradeUserToPro(userId: string): Promise<void> {
+  if (!userId) throw new Error("[kv] userId is required");
+
+  try {
+    await setUserPermissions(userId, {
+      tier: "pro",
+      canChat: true,
+      dailyLimit: Infinity,
+      maxConversations: Infinity,
+    });
+    console.log(`[kv] User ${userId} upgraded to Pro`);
+  } catch (err) {
+    console.error(`[kv] upgradeUserToPro failed for "${userId}":`, err);
+    throw new Error("Failed to upgrade user");
+  }
+}
+
+/** 查询用户订阅等级 */
+export async function getUserTier(userId: string): Promise<string> {
+  if (!userId) throw new Error("[kv] userId is required");
+  try {
+    const perms = await getUserPermissions(userId);
+    return perms.tier;
+  } catch {
+    return "free";
+  }
+}

@@ -339,7 +339,13 @@ export default function ChatPage() {
         </header>
 
         {/* ── 消息滚动区 ── */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto px-4 md:px-6 py-6",
+            "scroll-smooth scroll-py-4",
+            "chat-scrollbar",
+          )}
+        >
           {messages.length === 0 ? (
             /* 空状态 */
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -392,8 +398,8 @@ export default function ChatPage() {
 
               {/* 发送中骨架 */}
               {isSending && (
-                <div className="flex items-start my-2">
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-bubble rounded-tl-md bg-muted">
+                <div className="flex items-start my-3">
+                  <div className="flex items-center gap-2 px-5 py-3 rounded-bubble rounded-tl-md bg-muted shadow-soft-sm">
                     <span className="w-2 h-2 rounded-full bg-mint-400 animate-pulse [animation-delay:0ms]" />
                     <span className="w-2 h-2 rounded-full bg-mint-400 animate-pulse [animation-delay:150ms]" />
                     <span className="w-2 h-2 rounded-full bg-mint-400 animate-pulse [animation-delay:300ms]" />
@@ -413,6 +419,44 @@ export default function ChatPage() {
           placeholder={dict.inputPlaceholder}
         />
       </main>
+
+      {/* ── 自定义滚动条 + 消息淡入 ── */}
+      <style jsx>{`
+        .chat-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .chat-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .chat-scrollbar::-webkit-scrollbar-thumb {
+          background: hsl(35, 5%, 75%);
+          border-radius: 999px;
+        }
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: hsl(35, 5%, 60%);
+        }
+        @media (prefers-color-scheme: dark) {
+          .chat-scrollbar::-webkit-scrollbar-thumb {
+            background: hsl(35, 5%, 35%);
+          }
+          .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: hsl(35, 5%, 50%);
+          }
+        }
+        @keyframes msgFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .msg-enter {
+          animation: msgFadeIn 350ms ease-out both;
+        }
+      `}</style>
     </div>
   );
 }

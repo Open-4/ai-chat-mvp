@@ -68,8 +68,8 @@ export default function ChatInput({
     <div
       className={cn(
         "sticky bottom-0 z-10 w-full",
-        "bg-gradient-to-t from-background via-background/95 to-transparent",
-        "pt-4 pb-4 px-4 md:px-6",
+        "bg-gradient-to-t from-background via-background/85 to-transparent",
+        "pt-6 pb-5 px-4 md:px-6",
         className,
       )}
     >

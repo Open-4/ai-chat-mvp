@@ -46,7 +46,7 @@ export default function ChatBubble({
   return (
     <div
       className={cn(
-        "flex flex-col w-full my-2",
+        "flex flex-col w-full my-3 first:mt-0 last:mb-0",
         isUser ? "items-end" : "items-start",
         className,
       )}
@@ -78,8 +78,9 @@ export default function ChatBubble({
       {/* ── 气泡主体 ── */}
       <div
         className={cn(
-          "relative max-w-[80%] md:max-w-[70%] px-4 py-2.5 text-sm leading-relaxed",
-          "transition-colors duration-400 ease-out",
+          "relative max-w-[78%] md:max-w-[65%] px-5 py-3 text-sm leading-relaxed",
+          "transition-all duration-400 ease-out",
+          "hover:shadow-soft-md",
           /* 用户：薄荷绿底白字，靠右 */
           isUser
             ? "bg-mint-500 text-white rounded-bubble rounded-tr-md shadow-soft-sm"
@@ -90,10 +91,10 @@ export default function ChatBubble({
         {/* 小三角 */}
         <span
           className={cn(
-            "absolute top-0 w-3 h-3",
+            "absolute top-0 w-2.5 h-2.5",
             isUser
-              ? "-right-1.5 bg-mint-500 [clip-path:polygon(0_0,100%_100%,100%_0)]"
-              : "-left-1.5 bg-muted [clip-path:polygon(0_0,100%_0,0_100%)]",
+              ? "-right-1 bg-mint-500 [clip-path:polygon(0_0,100%_100%,100%_0)]"
+              : "-left-1 bg-muted [clip-path:polygon(0_0,100%_0,0_100%)]",
           )}
           aria-hidden="true"
         />

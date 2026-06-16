@@ -260,7 +260,7 @@ export default function HomePage() {
                 )}
               >
                 <span className="text-2xl select-none">{item.emoji}</span>
-                <span className="text-sm font-medium text-foreground">{item.label}</span>
+                <span className="text-sm font-medium text-foreground truncate min-w-0">{item.label}</span>
                 <span className={cn("absolute top-3 right-3 w-2 h-2 rounded-full", s.dot)} />
               </button>
             );

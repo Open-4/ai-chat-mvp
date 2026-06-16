@@ -128,13 +128,13 @@ export default function BreathePage() {
       </p>
 
       {/* ═══ Breathing circle ═══ */}
-      <div className="relative flex items-center justify-center mb-10">
+      <div className="relative flex items-center justify-center mb-8 md:mb-10">
         {/* outer glow rings */}
         <div
           className="absolute rounded-full transition-all duration-500"
           style={{
-            width: 320,
-            height: 320,
+            width: "min(320px, 85vw)",
+            height: "min(320px, 85vw)",
             boxShadow: `
               0 0 80px ${glowColor},
               0 0 160px ${glowColor.replace(String(glowAlpha), String(glowAlpha * 0.5))},
@@ -147,8 +147,8 @@ export default function BreathePage() {
         <div
           className="relative flex items-center justify-center rounded-full transition-all duration-200 ease-linear"
           style={{
-            width: 200,
-            height: 200,
+            width: "min(200px, 55vw)",
+            height: "min(200px, 55vw)",
             transform: `scale(${scale})`,
             background: "radial-gradient(circle at 40% 35%, hsl(163,44%,72%), hsl(163,44%,58%))",
             boxShadow: `

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useLocale } from "@/lib/use-locale";
 import Link from "next/link";
 import {
   saveJournalEntry,
@@ -100,7 +100,7 @@ const DEMO_USER = "demo-user-001";
    Page
    ═══════════════════════════════════════════ */
 export default function JournalPage() {
-  const { locale } = useParams<{ locale: string }>();
+  const locale = useLocale();
   const dict = t[locale] ?? t.en;
 
   /* ── form state ── */

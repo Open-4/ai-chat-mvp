@@ -1,36 +1,18 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const locales = ["en", "es", "fr"];
-const defaultLocale = "en";
-
 export function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const res = NextResponse.next();
 
-  /* 静态资源 & API 放行 */
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.match(/\.(svg|ico|png|jpg|css|js|woff2)$/)
-  ) {
-    return NextResponse.next();
-  }
-
-  /* 检查 URL 是否已有 locale 前缀 */
-  const hasLocale = locales.some(
-    (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`),
-  );
-
-  if (!hasLocale) {
+  /* 从 Accept-Language 解析首选用语言，写入 cookie */
+  const cookieLocale = req.cookies.get("locale")?.value;
+  if (!cookieLocale) {
     const acceptLang = req.headers.get("accept-language") ?? "";
-    const preferred =
-      locales.find((l) => acceptLang.includes(l)) ?? defaultLocale;
-    return NextResponse.redirect(
-      new URL(`/${preferred}${pathname === "/" ? "" : pathname}`, req.url),
-    );
+    const preferred = ["es", "fr"].find((l) => acceptLang.includes(l)) ?? "en";
+    res.cookies.set("locale", preferred, { path: "/", maxAge: 86400 * 365 });
   }
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {

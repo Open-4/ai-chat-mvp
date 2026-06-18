@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useLocale } from "@/lib/use-locale";
 import Link from "next/link";
 
 /* ── helpers ── */
@@ -141,7 +141,7 @@ declare global {
    Page
    ═══════════════════════════════════════════ */
 export default function PricingPage() {
-  const { locale } = useParams<{ locale: string }>();
+  const locale = useLocale();
   const dict = t[locale] ?? t.en;
   const features = dict.features as Record<string, string>;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useLocale } from "@/lib/use-locale";
 import Link from "next/link";
 
 /* ── constants ── */
@@ -23,7 +23,7 @@ function cn(...classes: (string | undefined | false | null)[]): string {
    Page
    ═══════════════════════════════════════════ */
 export default function BreathePage() {
-  const { locale } = useParams<{ locale: string }>();
+  const locale = useLocale();
   const l = (obj: Record<string, string>) => obj[locale] ?? obj.en;
 
   /* state */

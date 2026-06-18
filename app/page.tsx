@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { useLocale } from "@/lib/use-locale";
 
 /* ── helpers ── */
 function cn(...classes: (string | undefined | false | null)[]): string {
@@ -132,7 +133,7 @@ function getGreeting(dict: Record<string, string>): string {
    Page
    ═══════════════════════════════════════════ */
 export default function HomePage() {
-  const { locale } = useParams<{ locale: string }>();
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const dict = t[locale] ?? t.en;
@@ -152,8 +153,8 @@ export default function HomePage() {
 
   /* ── Language switch ── */
   const switchLocale = (next: string) => {
-    const path = window.location.pathname.replace(/^\/(en|es|fr)/, `/${next}`);
-    router.push(path);
+    document.cookie = `locale=${next};path=/;max-age=${86400 * 365}`;
+    window.location.reload();
   };
 
   return (

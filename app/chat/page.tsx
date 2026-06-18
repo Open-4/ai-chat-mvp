@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useLocale } from "@/lib/use-locale";
 import ChatSidebar, { type ConversationItem } from "./_components/ChatSidebar";
 import ChatBubble, { type Emotion } from "./_components/ChatBubble";
 import ChatInput from "./_components/ChatInput";
@@ -164,7 +164,7 @@ function convDataToMessages(data: ConversationData): Message[] {
    Page
    ═══════════════════════════════════════════ */
 export default function ChatPage() {
-  const { locale } = useParams<{ locale: string }>();
+  const locale = useLocale();
   const dict = t[locale] ?? t.en;
 
   /* ── UI state ── */

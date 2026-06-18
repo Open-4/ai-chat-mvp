@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useLocale } from "@/lib/use-locale";
 import Link from "next/link";
 import {
   getJournalEntriesByMonth,
@@ -336,7 +336,7 @@ function TimelineItem({
    Page
    ═══════════════════════════════════════════ */
 export default function HistoryPage() {
-  const { locale } = useParams<{ locale: string }>();
+  const locale = useLocale();
   const dict = t[locale] ?? t.en;
 
   const now = new Date();

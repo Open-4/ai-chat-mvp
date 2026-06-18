@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 const locales = ["en", "es", "fr"];
 const defaultLocale = "en";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  /* 静态资源 & API 路由放行 */
+  /* 静态资源 & API 放行 */
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/public") ||
     pathname.match(/\.(svg|ico|png|jpg|css|js|woff2)$/)
   ) {
     return NextResponse.next();
@@ -22,7 +22,6 @@ export function middleware(req: NextRequest) {
   );
 
   if (!hasLocale) {
-    /* 从 Accept-Language 或默认英语 */
     const acceptLang = req.headers.get("accept-language") ?? "";
     const preferred =
       locales.find((l) => acceptLang.includes(l)) ?? defaultLocale;
@@ -35,5 +34,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|api|public|favicon\\.ico).*)"],
+  matcher: ["/((?!_next|api|favicon\\.ico).*)"],
 };
